@@ -1,0 +1,69 @@
+Vagrant.configure("2") do |config|
+  # Используем базовый образ Ubuntu 20.04 (Focal Fossa)
+  config.vm.box = "ubuntu/focal64"
+
+  # Определяем настройки для каждой машины
+  machines = [
+    {
+      name: "manager",
+      hostname: "manager",
+      ip: "192.168.56.10",
+      ports: [], # Нет проброшенных портов
+      memory: 1024, # Память по умолчанию
+      cpus: 1       # Количество CPU по умолчанию
+    },
+    {
+      name: "consul_server",
+      hostname: "consulserver",
+      ip: "192.168.56.20",
+      ports: [
+        { guest: 8500, host: 8500 }
+      ],
+      memory: 2048, # Память увеличена
+      cpus: 1       # Количество CPU по умолчанию
+    },
+    {
+      name: "api",
+      hostname: "api",
+      ip: "192.168.56.21",
+      ports: [
+        { guest: 8082, host: 8082 }
+      ], 
+      memory: 2048, # Память увеличена
+      cpus: 1       # Количество CPU по умолчанию
+    },
+    {
+    name: "db",
+    hostname: "db",
+    ip: "192.168.56.22",
+    ports: [], 
+    memory: 1024, # Память по умолчанию
+    cpus: 1       # Количество CPU по умолчанию
+    }
+  ]
+
+  # Создаем виртуальные машины на основе настроек
+  machines.each do |machine|
+    config.vm.define machine[:name] do |node|
+      node.vm.hostname = machine[:hostname]
+
+      # Настройка приватной сети
+      node.vm.network "private_network", ip: machine[:ip]
+
+      # Пробрасываем порты, если они указаны
+      if machine[:ports].any?
+        machine[:ports].each do |port|
+          node.vm.network "forwarded_port", guest: port[:guest], host: port[:host]
+        end
+      end
+
+
+      # Указываем уникальное имя для VirtualBox с префиксом DO8
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = "DO8-2-#{machine[:name]}"
+        vb.memory = machine[:memory] # Устанавливаем память для конкретной машины
+        vb.cpus = machine[:cpus]     # Устанавливаем количество CPU для конкретной машины
+      end
+    end
+  end
+end

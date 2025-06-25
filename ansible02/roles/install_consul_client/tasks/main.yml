@@ -1,0 +1,145 @@
+- name: Install dependencies
+  apt:
+    name: ["curl", "unzip", "libc6"]
+    state: present
+  become: true
+
+- name: Create consul user and group
+  user:
+    name: consul
+    system: yes
+    shell: /bin/false
+  become: true
+
+- name: Create Consul directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+  with_items:
+    - /opt/consul
+    - /etc/consul.d
+  become: true
+
+- name: Download Consul
+  get_url:
+    url: https://mirror.selectel.ru/3rd-party/hashicorp-releases/consul/1.20.4/consul_1.20.4_linux_amd64.zip
+    dest: /tmp/consul.zip
+  become: true
+
+- name: Unzip Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: '0755'
+  become: true
+
+- name: Download Envoy binary
+  get_url:
+    url: https://github.com/envoyproxy/envoy/releases/download/v1.33.0/envoy-1.33.0-linux-x86_64
+    dest: /tmp/envoy
+    mode: '0755'
+  become: true
+
+- name: Install Envoy to /usr/local/bin
+  copy:
+    src: /tmp/envoy
+    dest: /usr/local/bin/envoy
+    remote_src: yes
+    mode: '0755'
+  become: true
+
+- name: Cleanup Envoy binary
+  file:
+    path: /tmp/envoy
+    state: absent
+  become: true
+
+
+- name: Copy Consul client config
+  ansible.builtin.copy:
+    src: consul_client.hcl
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
+    mode: '0644'
+  become: true
+
+- name: Create systemd service for Consul
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/consul.service
+    content: |
+      [Unit]
+      Description=Consul Agent
+      Requires=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      ExecReload=/bin/kill -HUP $MAINPID
+      KillSignal=SIGTERM
+      Restart=on-failure
+      LimitNOFILE=4096
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  notify: restart consul
+  become: true
+
+- name: Create systemd service for Envoy
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/consul-envoy.service
+    content: |
+      [Unit]
+      Description=Consul Envoy
+      Requires=consul.service
+      After=consul.service
+
+      [Service]
+      ExecStart=/usr/local/bin/envoy -c /etc/consul.d/envoy.hcl
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: true
+
+# - name: Start and enable Consul service
+#   systemd:
+#     name: consul
+#     state: started
+#     enabled: yes
+#   become: true
+- name: Start and enable services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - consul
+    - consul-envoy
+  become: true
+
+# - name: Debug Consul members
+#   debug:
+#     var: consul_members.stdout_lines
+#
+# - name: Cleanup temporary files
+#   file:
+#     path: /tmp/consul.zip
+#     state: absent
+#   become: true
+
+
+

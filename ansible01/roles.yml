@@ -1,0 +1,21 @@
+---
+- name: Install base packages
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+- name: Apply application role on node01
+  hosts: node01
+  become: yes
+  roles:
+    - application
+
+- name: Apply apache and postgres roles on node02
+  hosts: node02
+  become: yes
+  roles:
+    - apache
+    - postgres

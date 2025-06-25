@@ -1,0 +1,16 @@
+# /etc/systemd/system/envoy-api.service
+
+[Unit]
+Description=Envoy Proxy for API Service
+After=network.target consul.service
+Requires=consul.service
+
+[Service]
+ExecStart=/usr/local/bin/envoy -c /etc/consul.d/envoy-api.yaml
+Restart=always
+RestartSec=5
+User=envoy
+Group=envoy
+
+[Install]
+WantedBy=multi-user.target

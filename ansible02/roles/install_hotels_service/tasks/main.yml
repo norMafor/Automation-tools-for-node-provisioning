@@ -1,0 +1,54 @@
+- name: Ensure OpenJDK 8 is installed
+  apt:
+    name: openjdk-8-jdk
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Copy hotels service code
+  ansible.builtin.copy:
+    src: "services/hotel-service"
+    dest: "/opt/hotel-service"
+    owner: "vagrant"
+    group: "vagrant"
+    mode: '0755'
+  become: true
+
+- name: Set environment variables
+  lineinfile:
+    path: /etc/environment
+    line: "{{ item }}"
+    create: yes
+  with_items:
+    - "POSTGRES_HOST=127.0.0.1"
+    - "POSTGRES_PORT=5432"
+    - "POSTGRES_DB=hotels_db"
+    - "POSTGRES_USER=postgres"
+    - "POSTGRES_PASSWORD=postgres"
+  become: true
+
+- name: Create systemd service
+  ansible.builtin.template:
+    src: /roles/install_hotels_service/templates/hotel-service.service.j2
+    dest: /etc/systemd/system/hotel-service.service
+    mode: '0644'
+  become: true
+
+
+- name: Enable service
+  ansible.builtin.systemd:
+    name: hotel-service
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: true
+
+- name: Check if hotel-service is running
+  ansible.builtin.systemd:
+    name: hotel-service
+    state: started
+  register: service_status
+
+- name: Display hotel-service status
+  debug:
+    var: service_status

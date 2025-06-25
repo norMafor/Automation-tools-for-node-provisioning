@@ -1,0 +1,43 @@
+---
+- name: Install PostgreSQL and dependencies
+  apt:
+    name:
+      - postgresql
+      - python3-psycopg2
+      - libpq-dev
+      - python3-pip
+    state: present
+
+- name: Install psycopg2 via pip
+  pip:
+    name: psycopg2-binary
+    executable: pip3
+
+- name: Start PostgreSQL
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Ensure database is created
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_db:
+    name: devops8_db
+    state: present
+
+- name: Ensure arbitrary_table is created and data is inserted
+  become: true
+  become_user: postgres
+  become_method: su
+  community.postgresql.postgresql_query:
+    db: devops8_db
+    query: |
+      CREATE TABLE IF NOT EXISTS arbitrary_table (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50)
+      );
+      INSERT INTO arbitrary_table (name)
+      VALUES ('arbitrary_data_application'), ('arbitrary_data_apache'), ('arbitrary_data_postgres')
+      ON CONFLICT (id) DO NOTHING;

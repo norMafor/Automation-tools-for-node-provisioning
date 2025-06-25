@@ -1,0 +1,15 @@
+[consul_server]
+consulserver ansible_host=192.168.56.20
+
+[api_service]
+api ansible_host=192.168.56.21
+
+[db_server]
+db ansible_host=192.168.56.22
+
+[manager_nodes]
+manager ansible_hosts=192.168.56.10
+
+[all:vars]
+ansible_user=vagrant
+

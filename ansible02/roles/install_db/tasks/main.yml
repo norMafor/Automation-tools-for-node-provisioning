@@ -1,0 +1,67 @@
+---
+# tasks file for roles/install_db
+- name: Install PostgreSQL and dependencies
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+      - libpq-dev
+      - python3-pip
+    state: present
+  become: true
+
+- name: Install psycopg2 via pip
+  pip:
+    name: psycopg2-binary
+    executable: pip3
+  become: true
+
+- name: Start PostgreSQL
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+  become: true
+
+- name: Temporarily update pg_hba.conf to use trust authentication
+  lineinfile:
+    path: /etc/postgresql/12/main/pg_hba.conf
+    regexp: '^local\s+all\s+postgres\s+\w+'
+    line: 'local   all             postgres                                trust'
+  become: true
+
+- name: Restart PostgreSQL service to apply 'trust' authentication
+  systemd:
+    name: postgresql
+    state: restarted
+  become: true
+
+- name: Set PostgreSQL password for user postgres
+  postgresql_user:
+    name: postgres
+    password: "postgres"
+    # password: "{{ postgres_password }}"  # Ansible Vault для переменной
+  become: true
+
+- name: Update pg_hba.conf to use md5 authentication
+  lineinfile:
+    path: /etc/postgresql/12/main/pg_hba.conf
+    regexp: '^local\s+all\s+postgres\s+\w+'
+    line: 'local   all             postgres                                md5'
+  become: true
+
+- name: Restart PostgreSQL service to apply 'md5' authentication
+  systemd:
+    name: postgresql
+    state: restarted
+  become: true
+
+- name: Create database hotels_db
+  postgresql_db:
+    name: hotels_db
+    state: present
+    login_user: postgres
+    login_password: "postgres"
+    # login_password: "{{ postgres_password }}"  # Ansible Vault
+  become: true

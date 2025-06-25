@@ -1,0 +1,20 @@
+{
+    "service": {
+      "name": "db",
+      "port": 5432,
+      "connect": {
+        "sidecar_service": {}
+      },
+      "checks": [
+        {
+          "id": "db-tcp",
+          "name": "DB TCP Check",
+          "tcp": "localhost:5432",
+          "interval": "10s",
+          "timeout": "1s"
+        }
+      ]
+    }
+  }
+
+ # /etc/consul.d/db-service.json 

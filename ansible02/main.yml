@@ -1,0 +1,24 @@
+---
+- name: Install Consul Server
+  hosts: consul_server
+  roles:
+    - role: install_consul_server
+      tags: consul_server
+
+- name: Install Consul Clients
+  hosts: api, db
+  roles:
+    - role: install_consul_client
+      tags: consul_client
+
+- name: Setup DB
+  hosts: db
+  roles:
+    - role: install_db
+      tags: db
+
+- name: Deploy Hotels Service
+  hosts: api
+  roles:
+    - role: install_hotels_service
+      tags: hotels_service

@@ -1,0 +1,94 @@
+---
+- name: Install dependencies
+  apt:
+    name: ["unzip", "curl"]
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Create consul user and group
+  user:
+    name: consul
+    create_home: no
+    system: yes
+    shell: /bin/false
+  become: true
+
+- name: Create Consul directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+  with_items:
+    - /opt/consul
+    - /etc/consul.d
+  become: true
+
+- name: Download Consul
+  get_url:
+    url: https://mirror.selectel.ru/3rd-party/hashicorp-releases/consul/1.20.4/consul_1.20.4_linux_amd64.zip
+    dest: /tmp/consul.zip
+  become: true
+
+- name: Unzip Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: '0755'
+  become: true
+
+- name: Copy Consul server config
+  ansible.builtin.copy:
+    src: consul_server.hcl
+    dest: /etc/consul.d/consul.hcl
+    owner: consul
+    group: consul
+    mode: '0644'
+  become: true
+
+- name: Create systemd service for Consul
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/consul.service
+    content: |
+      [Unit]
+      Description=Consul Agent
+      Requires=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=consul
+      Group=consul
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/ -data-dir=/opt/consul -server -bootstrap-expect=1
+      ExecReload=/bin/kill -HUP $MAINPID
+      KillSignal=SIGTERM
+      Restart=on-failure
+      LimitNOFILE=4096
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  notify: restart consul
+  become: true
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: true
+
+- name: Start and enable Consul service
+  systemd:
+    name: consul
+    enabled: yes
+    state: started
+  become: true
+
+- name: Cleanup temporary files
+  file:
+    path: /tmp/consul.zip
+    state: absent
+  become: true
+
+
